@@ -1,0 +1,100 @@
+import Foundation
+import Combine
+
+struct QuotaWindow: Codable {
+    let label: String
+    let remainingPercent: Double
+    let resetsAt: Double?
+    var detail: String?
+}
+struct ProviderQuota: Codable, Identifiable {
+    let provider: String
+    let windows: [QuotaWindow]
+    let source: String?
+    let error: String?
+    var plan: String?
+    var notes: [String]?
+    var id: String { provider }
+}
+struct UsageSnapshot: Codable {
+    let updatedAt: Double
+    let providers: [ProviderQuota]
+}
+final class UsageStore: ObservableObject {
+    @Published var snapshot: UsageSnapshot?
+    @Published var refreshing = false
+    @Published var error: String?
+    // Each refresh launches python3 and `codex app-server`, which is the most
+    // expensive thing this app does, so the cadence adapts to power and visibility.
+    var interval: TimeInterval = 300 { didSet { if interval != oldValue { schedule() } } }
+    var paused = false { didSet { if !paused && oldValue { refreshIfStale(60) } } }
+    private var timer: Timer?
+    private var lastAttempt: Date?
+    init() {
+        refresh()
+        schedule()
+    }
+    private func schedule() {
+        timer?.invalidate()
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+            guard let self = self, !self.paused else { return }
+            self.refresh()
+        }
+        timer.tolerance = interval * 0.2
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+    func refreshIfStale(_ seconds: TimeInterval) {
+        guard Date().timeIntervalSince(lastAttempt ?? .distantPast) >= seconds else { return }
+        refresh()
+    }
+    // Fixed sample data for screenshots and UI work; no account is contacted.
+    static var demo: UsageSnapshot {
+        let now = Date().timeIntervalSince1970
+        return UsageSnapshot(updatedAt: now, providers: [
+            ProviderQuota(provider: "chatgpt", windows: [
+                QuotaWindow(label: "5 часов", remainingPercent: 72, resetsAt: now + 41 * 60, detail: nil),
+                QuotaWindow(label: "Неделя", remainingPercent: 58, resetsAt: now + 5 * 86400, detail: nil),
+            ], source: "ChatGPT Work / Codex", error: nil, plan: "Plus", notes: []),
+            ProviderQuota(provider: "cursor", windows: [
+                QuotaWindow(label: "Всего", remainingPercent: 81, resetsAt: now + 19 * 86400, detail: nil),
+                QuotaWindow(label: "Auto", remainingPercent: 84, resetsAt: now + 19 * 86400, detail: nil),
+                QuotaWindow(label: "Модели", remainingPercent: 63, resetsAt: now + 19 * 86400, detail: nil),
+            ], source: "Cursor plan", error: nil, plan: "Pro", notes: ["$7.40 / $20 включено"]),
+        ])
+    }
+    func refresh() {
+        guard !refreshing else { return }
+        if ProcessInfo.processInfo.environment["TOUTU_DEMO"] != nil { snapshot = Self.demo; return }
+        refreshing = true
+        lastAttempt = Date()
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let bundled = Bundle.main.resourceURL?.appendingPathComponent("fetch_usage.py")
+            let development = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("scripts/fetch_usage.py")
+            guard let script = [bundled, development].compactMap({ $0 }).first(where: { FileManager.default.fileExists(atPath: $0.path) }) else {
+                DispatchQueue.main.async { self?.refreshing = false; self?.error = "Не найден модуль лимитов" }
+                return
+            }
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+            process.arguments = [script.path]
+            process.qualityOfService = .utility
+            let output = Pipe()
+            process.standardOutput = output
+            process.standardError = FileHandle.nullDevice
+            var result: UsageSnapshot?
+            do {
+                try process.run()
+                let data = output.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                if process.terminationStatus == 0 { result = try? JSONDecoder().decode(UsageSnapshot.self, from: data) }
+            } catch { }
+            let value = result
+            DispatchQueue.main.async {
+                self?.refreshing = false
+                if let value = value { self?.snapshot = value; self?.error = nil }
+                else { self?.error = "Не удалось обновить лимиты" }
+            }
+        }
+    }
+}
