@@ -25,24 +25,28 @@ class UsageTests(unittest.TestCase):
         result = usage.cursor_snapshot({"individualUsage": {"plan": {"used": 423, "limit": 1000}}})
         self.assertAlmostEqual(result["windows"][0]["remainingPercent"], 57.7)
         result = usage.cursor_snapshot({"individualUsage": {"plan": {"autoPercentUsed": 0.36}}})
+        self.assertEqual(result["windows"][0]["label"], "Cursor")
         self.assertAlmostEqual(result["windows"][0]["remainingPercent"], 99.64)
+        self.assertAlmostEqual(result["windows"][0]["usedPercent"], 0.36)
 
-    def test_cursor_prefers_percentages_shown_by_cursor_over_dollar_ratio(self):
+    def test_cursor_matches_dashboard_pools_not_dollar_ratio(self):
         data = {"membershipType": "pro", "isUnlimited": False, "billingCycleEnd": "2026-11-11T18:39:35.000Z",
-                "individualUsage": {"plan": {"used": 1142, "limit": 2000, "totalPercentUsed": 2.4, "autoPercentUsed": 2.35, "apiPercentUsed": 3.69},
+                "individualUsage": {"plan": {"used": 2000, "limit": 2000, "totalPercentUsed": 7.8, "autoPercentUsed": 2.82, "apiPercentUsed": 100},
                                     "onDemand": {"enabled": True, "used": 350, "limit": 5000}}}
         result = usage.cursor_snapshot(data)
-        self.assertEqual([w["label"] for w in result["windows"]], ["Всего", "Auto", "Модели"])
-        self.assertAlmostEqual(result["windows"][0]["remainingPercent"], 97.6)
+        self.assertEqual([w["label"] for w in result["windows"]], ["Cursor", "Другие"])
+        self.assertAlmostEqual(result["windows"][0]["usedPercent"], 2.82)
+        self.assertAlmostEqual(result["windows"][1]["usedPercent"], 100)
+        self.assertAlmostEqual(result["windows"][1]["remainingPercent"], 0)
         self.assertEqual(result["plan"], "Pro")
-        self.assertEqual(result["notes"], ["$11.42 / $20 включено", "Сверх плана: $3.50 / $50"])
+        self.assertEqual(result["notes"], ["Сверх плана: $3.50 / $50"])
         self.assertTrue(all(w["resetsAt"] == 1794422375 for w in result["windows"]))
 
     def test_cursor_unlimited_and_hidden_on_demand(self):
         result = usage.cursor_snapshot({"isUnlimited": True, "individualUsage": {"plan": {"used": 5, "limit": 100}, "onDemand": {"enabled": False, "used": 0}}})
         self.assertEqual(result["windows"][0]["remainingPercent"], 100.0)
         self.assertEqual(result["windows"][0]["detail"], "Без лимита")
-        self.assertEqual(result["notes"], ["$0.05 / $1 включено"])
+        self.assertEqual(result["notes"], [])
 
     def test_codex_plan_and_flags(self):
         data = {"rateLimits": {"primary": {"usedPercent": 33, "windowDurationMins": 300}, "planType": "plus",

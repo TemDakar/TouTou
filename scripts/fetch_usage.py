@@ -57,7 +57,8 @@ def codex_snapshot(result):
         if percent is not None:
             minutes = number(window.get("windowDurationMins"))
             label = "Неделя" if minutes == 10080 else "5 часов" if minutes == 300 else (str(int(minutes)) + " мин" if minutes else "Лимит")
-            windows.append({"label": label, "remainingPercent": percent, "resetsAt": number(window.get("resetsAt")), "detail": None})
+            used_percent = number(window.get("usedPercent"))
+            windows.append({"label": label, "remainingPercent": percent, "usedPercent": None if used_percent is None else max(0, min(100, used_percent)), "resetsAt": number(window.get("resetsAt")), "detail": None})
     if not windows:
         raise ValueError("No quota windows")
     notes = []
@@ -126,20 +127,22 @@ def cursor_snapshot(data):
     used, limit = number(plan.get("used")), number(plan.get("limit"))
     windows = []
     if data.get("isUnlimited") is True:
-        windows.append({"label": "План", "remainingPercent": 100.0, "resetsAt": None, "detail": "Без лимита"})
+        windows.append({"label": "План", "remainingPercent": 100.0, "usedPercent": 0.0, "resetsAt": None, "detail": "Без лимита"})
     else:
-        # These are the percentages Cursor itself shows ("You've used N% of your included usage").
-        for field, label in [("totalPercentUsed", "Всего"), ("autoPercentUsed", "Auto"), ("apiPercentUsed", "Модели")]:
-            percent = remaining(plan.get(field))
-            if percent is not None:
-                windows.append({"label": label, "remainingPercent": percent, "resetsAt": None, "detail": None})
+        # Cursor dashboard: "Cursor Models" (Composer / Grok / Auto) and "Other Models" (third-party API).
+        # Those two percentages are what the IDE shows; totalPercentUsed is a different internal metric.
+        for field, label in [("autoPercentUsed", "Cursor"), ("apiPercentUsed", "Другие")]:
+            used_percent = number(plan.get(field))
+            if used_percent is None:
+                continue
+            used_percent = max(0, min(100, used_percent))
+            windows.append({"label": label, "remainingPercent": remaining(used_percent), "usedPercent": used_percent, "resetsAt": None, "detail": None})
         if not windows and used is not None and limit is not None and limit > 0:
-            windows.append({"label": "План", "remainingPercent": remaining(used / limit * 100), "resetsAt": None, "detail": None})
+            used_percent = used / limit * 100
+            windows.append({"label": "План", "remainingPercent": remaining(used_percent), "usedPercent": max(0, min(100, used_percent)), "resetsAt": None, "detail": None})
     if not windows:
         raise ValueError("No included quota")
     notes = []
-    if used is not None and limit is not None and limit > 0:
-        notes.append(money(used) + " / " + money(limit) + " включено")
     on_demand = usage.get("onDemand") or {}
     if isinstance(on_demand, dict) and on_demand.get("enabled"):
         spent = money(on_demand.get("used"))
@@ -164,16 +167,26 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def cursor_usage():
+def cursor_token():
     database = Path.home() / "Library/Application Support/Cursor/User/globalStorage/state.vscdb"
-    connection = sqlite3.connect(database.as_uri() + "?mode=ro", uri=True, timeout=3)
-    try:
-        row = connection.execute("SELECT value FROM ItemTable WHERE key = ?", ("cursorAuth/accessToken",)).fetchone()
-    finally:
-        connection.close()
-    if not row or not isinstance(row[0], str):
-        raise ValueError("Sign in to Cursor")
-    token = row[0]
+    last_error = None
+    for extra in ("?mode=ro", "?mode=ro&immutable=1"):
+        try:
+            connection = sqlite3.connect(database.as_uri() + extra, uri=True, timeout=5)
+            try:
+                row = connection.execute("SELECT value FROM ItemTable WHERE key = ?", ("cursorAuth/accessToken",)).fetchone()
+            finally:
+                connection.close()
+            if row and isinstance(row[0], str) and row[0]:
+                return row[0]
+        except sqlite3.Error as error:
+            last_error = error
+            time.sleep(0.25)
+    raise ValueError("Sign in to Cursor" if last_error is None else "Cursor database busy")
+
+
+def cursor_usage():
+    token = cursor_token()
     part = token.split(".")[1]
     payload = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
     subject = str(payload.get("sub", "")).split("|")[-1]

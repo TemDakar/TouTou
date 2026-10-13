@@ -145,8 +145,8 @@ struct Companion: View {
 
 enum IslandLayout {
     static let expandedWidth: CGFloat = 440
-    static let expandedHeight: CGFloat = 200
-    static let cardHeight: CGFloat = 100
+    static let expandedHeight: CGFloat = 214
+    static let cardHeight: CGFloat = 114
 }
 
 enum PanelTab: String, CaseIterable {
@@ -158,6 +158,7 @@ struct IslandView: View {
     @ObservedObject var store: SessionStore
     @ObservedObject var usage: UsageStore
     @ObservedObject var power: PowerStore
+    @ObservedObject var alerts: QuotaAlertCenter
     @State private var closeTask: DispatchWorkItem?
     var active: Bool { store.sessions.contains { $0.state == "working" } }
     var body: some View {
@@ -205,6 +206,8 @@ struct IslandView: View {
                         }
                         Text(footerText).lineLimit(1).font(.system(size: 9)).foregroundStyle(.secondary)
                         Spacer(minLength: 2)
+                        Button { alerts.setEnabled(!alerts.enabled) } label: { Image(systemName: alerts.enabled ? "bell" : "bell.slash") }
+                            .help(alerts.permissionDenied ? "Разрешите уведомления Toutu в Системных настройках" : "Предупреждать, когда остаток лимита опускается ниже 25%, и ещё раз ниже 10%")
                         Button { store.muted.toggle() } label: { Image(systemName: store.muted ? "speaker.slash" : "speaker.wave.2") }.help("Звук завершения")
                         Button { NSApplication.shared.terminate(nil) } label: { Image(systemName: "power") }.help("Выйти")
                     }.font(.system(size: 10)).buttonStyle(.plain).foregroundStyle(.secondary)
@@ -257,15 +260,20 @@ struct IslandView: View {
             if let provider = provider, !provider.windows.isEmpty {
                 ForEach(Array(provider.windows.enumerated()), id: \.offset) { _, window in
                     HStack(spacing: 7) {
-                        Text(window.label).frame(width: 46, alignment: .leading).foregroundStyle(.secondary).lineLimit(1)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(window.label).foregroundStyle(.secondary).lineLimit(1)
+                            if distinctResets(provider), let reset = window.resetsAt {
+                                Text(shortReset(reset)).font(.system(size: 8)).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                        }.frame(width: 52, alignment: .leading)
                         GeometryReader { geometry in
                             ZStack(alignment: .leading) {
                                 Capsule().fill(Color.white.opacity(0.12))
                                 Capsule().fill(window.remainingPercent <= 10 ? Color.red : window.remainingPercent <= 25 ? Color.orange : color)
-                                    .frame(width: geometry.size.width * max(0, min(1, window.remainingPercent / 100)))
+                                    .frame(width: geometry.size.width * max(0, min(1, displayedPercent(window, id: id) / 100)))
                             }
                         }.frame(height: 4)
-                        Text(window.detail ?? String(format: "%.0f%%", window.remainingPercent)).monospacedDigit()
+                        Text(window.detail ?? String(format: "%.0f%%", displayedPercent(window, id: id))).monospacedDigit()
                             .frame(width: window.detail == nil ? 30 : 60, alignment: .trailing).lineLimit(1)
                     }.font(.system(size: 10)).help(windowHelp(window))
                 }
@@ -290,7 +298,7 @@ struct IslandView: View {
                     .toggleStyle(.switch).controlSize(.mini).labelsHidden().disabled(power.busy)
                     .help("Включает системную настройку pmset disablesleep; нужен пароль администратора")
             }
-            Text("Mac продолжит работу с закрытой крышкой: агенты Cursor и Codex доработают задачи, экран погаснет. Для переключения macOS спросит пароль администратора.")
+            Text("С закрытой крышкой Mac не уснёт, экран погаснет, агенты доработают задачи. Нужен пароль администратора.")
                 .font(.system(size: 9)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 6) {
                 Circle().fill(power.lidAwake ? Color.yellow : (power.onBattery ? Color.orange : Color.green)).frame(width: 5, height: 5)
@@ -299,32 +307,52 @@ struct IslandView: View {
                     Text("· батарея будет разряжаться").font(.system(size: 9)).foregroundStyle(.orange).lineLimit(1)
                 }
             }
+            Toggle(isOn: Binding(get: { power.launchAtLogin }, set: { power.setLaunchAtLogin($0) })) {
+                Text(power.launchNeedsApproval ? "Автозапуск: разрешите в Объектах входа" : "Открывать Toutu при включении Mac")
+                    .font(.system(size: 9))
+            }.toggleStyle(.checkbox).controlSize(.mini)
+            .help("Добавляет Toutu в объекты входа, чтобы панель появлялась после включения или входа в систему")
             Toggle(isOn: $power.restoreOnQuit) {
                 Text("Вернуть обычный сон при выходе из Toutu").font(.system(size: 9))
             }.toggleStyle(.checkbox).controlSize(.mini)
         }.padding(9).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
     }
+    func displayedPercent(_ window: QuotaWindow, id: String) -> Double {
+        // Cursor's own dashboard shows used % ("Cursor Models 3%"); ChatGPT card stays on remaining.
+        if id == "cursor", let used = window.usedPercent { return used }
+        return window.remainingPercent
+    }
+    func distinctResets(_ provider: ProviderQuota) -> Bool {
+        Set(provider.windows.compactMap { $0.resetsAt.map { Int($0) } }).count > 1
+    }
     func noteText(_ provider: ProviderQuota) -> String {
         var parts = provider.notes ?? []
-        let resets = provider.windows.compactMap { $0.resetsAt }
-        var seen = Set<Int>()
-        let unique = resets.filter { seen.insert(Int($0)).inserted }
-        if !unique.isEmpty { parts.append("сброс " + unique.map(shortReset).joined(separator: " / ")) }
+        if !distinctResets(provider), let timestamp = provider.windows.compactMap({ $0.resetsAt }).first {
+            parts.append("сброс " + shortReset(timestamp))
+        }
         return parts.joined(separator: " · ")
     }
     func windowHelp(_ window: QuotaWindow) -> String {
-        let used = String(format: "Использовано %.1f%%, осталось %.1f%%", 100 - window.remainingPercent, window.remainingPercent)
-        return used + ". " + resetText(window.resetsAt)
+        let used = window.usedPercent ?? (100 - window.remainingPercent)
+        let remaining = window.remainingPercent
+        let text = String(format: "Использовано %.1f%%, осталось %.1f%%", used, remaining)
+        return text + ". " + resetText(window.resetsAt)
     }
     func shortReset(_ timestamp: Double) -> String {
-        let delta = timestamp - Date().timeIntervalSince1970
+        let date = Date(timeIntervalSince1970: timestamp)
+        let delta = date.timeIntervalSinceNow
+        let calendar = Calendar.current
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ru_RU")
         if delta <= 60 { return "сейчас" }
-        if delta < 3600 { return "через \(Int(delta / 60)) мин" }
-        formatter.dateFormat = delta < 86400 ? "HH:mm" : "d MMM"
-        return formatter.string(from: Date(timeIntervalSince1970: timestamp))
+        if delta < 3600 { return "через \(max(1, Int(delta / 60))) мин" }
+        if calendar.isDateInToday(date) {
+            formatter.dateFormat = "HH:mm"
+            return formatter.string(from: date)
+        }
+        formatter.dateFormat = delta < 172800 ? "d MMM, HH:mm" : "d MMM"
+        return formatter.string(from: date)
     }
     func resetText(_ timestamp: Double?) -> String {
         guard let timestamp = timestamp else { return "Остаток включённого лимита" }
@@ -355,6 +383,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = SessionStore()
     let usage = UsageStore()
     let power = PowerStore()
+    let alerts = QuotaAlertCenter()
+    override init() {
+        super.init()
+        usage.onSnapshot = { [weak self] snapshot in self?.alerts.consider(snapshot) }
+    }
     private var subscriptions = Set<AnyCancellable>()
     private var screenObserver: NSObjectProtocol?
     private var animationTimer: Timer?
@@ -407,7 +440,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.hasShadow = false
         panel.isMovableByWindowBackground = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        let host = NSHostingView(rootView: IslandView(store: store, usage: usage, power: power).frame(maxHeight: .infinity, alignment: .top).ignoresSafeArea())
+        let host = NSHostingView(rootView: IslandView(store: store, usage: usage, power: power, alerts: alerts).frame(maxHeight: .infinity, alignment: .top).ignoresSafeArea())
         host.sizingOptions = []
         panel.contentView = host
         positionPanel(animated: false)
@@ -429,6 +462,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         workspace.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in self?.updatePause(asleep: false) }
         screenObserver = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in self?.positionPanel() }
         panel.orderFrontRegardless()
+        alerts.start()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = NSImage(systemSymbolName: "leaf.fill", accessibilityDescription: "Toutu")
         statusItem.button?.target = self
@@ -437,7 +471,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var screensAsleep = false
     private func updatePause(asleep: Bool? = nil) {
         if let asleep = asleep { screensAsleep = asleep }
-        usage.paused = screensAsleep || !panel.isVisible
+        // A hidden panel still needs fresh quotas, otherwise a low-balance banner never fires.
+        // Screen sleep is the only pause: nothing can be announced until the display wakes.
+        usage.paused = screensAsleep
     }
     @objc func toggle() {
         if panel.isVisible { panel.orderOut(nil) } else { panel.orderFrontRegardless() }
@@ -463,7 +499,7 @@ if let index = CommandLine.arguments.firstIndex(of: "--snapshot"), CommandLine.a
     RunLoop.main.run(until: Date().addingTimeInterval(ProcessInfo.processInfo.environment["TOUTU_DEMO"] != nil ? 1 : 8))
     for tab in PanelTab.allCases {
         store.tab = tab
-        let host = NSHostingView(rootView: IslandView(store: store, usage: usage, power: power))
+        let host = NSHostingView(rootView: IslandView(store: store, usage: usage, power: power, alerts: QuotaAlertCenter()))
         host.frame = NSRect(x: 0, y: 0, width: IslandLayout.expandedWidth, height: IslandLayout.expandedHeight)
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.3))

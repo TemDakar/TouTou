@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import IOKit.ps
+import ServiceManagement
 
 // Keeps the Mac running with the lid closed so agents finish their work.
 // macOS only honours lid-closed wake through `pmset -a disablesleep 1`, which
@@ -11,6 +12,8 @@ final class PowerStore: ObservableObject {
     @Published var onBattery = false
     @Published var batteryPercent: Int?
     @Published var message: String?
+    @Published var launchAtLogin = false
+    @Published var launchNeedsApproval = false
     @Published var restoreOnQuit: Bool {
         didSet { UserDefaults.standard.set(restoreOnQuit, forKey: "restoreSleepOnQuit") }
     }
@@ -22,6 +25,7 @@ final class PowerStore: ObservableObject {
     init() {
         restoreOnQuit = UserDefaults.standard.object(forKey: "restoreSleepOnQuit") as? Bool ?? true
         readBattery()
+        refreshLaunchAtLogin()
         refresh()
         // IOKit tells us when the power source changes; no polling required.
         let context = Unmanaged.passUnretained(self).toOpaque()
@@ -90,8 +94,27 @@ final class PowerStore: ObservableObject {
     }
 
     func refreshIfStale(_ seconds: TimeInterval = 30) {
+        refreshLaunchAtLogin()
         guard Date().timeIntervalSince(lastSettingsRead ?? .distantPast) >= seconds else { return }
         refresh()
+    }
+
+    func refreshLaunchAtLogin() {
+        let status = SMAppService.mainApp.status
+        launchAtLogin = status == .enabled || status == .requiresApproval
+        launchNeedsApproval = status == .requiresApproval
+    }
+
+    func setLaunchAtLogin(_ on: Bool) {
+        do {
+            if on { try SMAppService.mainApp.register() }
+            else { try SMAppService.mainApp.unregister() }
+            message = on ? "Toutu откроется при включении" : "Автозапуск выключен"
+        } catch {
+            message = Bundle.main.bundlePath.hasSuffix(".app") ? "Не удалось изменить автозапуск" : "Соберите Toutu.app — автозапуск работает из приложения"
+        }
+        refreshLaunchAtLogin()
+        if launchNeedsApproval { message = "Разрешите в Настройках → Объекты входа" }
     }
 
     func setLidAwake(_ on: Bool) {

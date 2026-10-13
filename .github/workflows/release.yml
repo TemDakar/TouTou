@@ -20,7 +20,9 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode.app && xcodebuild -version
 
       - name: Tests
-        run: python3 -m unittest discover -s Tests -v
+        run: |
+          python3 -m unittest discover -s Tests -v
+          swift test
 
       - name: Check version matches tag
         run: |

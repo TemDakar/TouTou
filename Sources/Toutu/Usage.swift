@@ -6,6 +6,7 @@ struct QuotaWindow: Codable {
     let remainingPercent: Double
     let resetsAt: Double?
     var detail: String?
+    var usedPercent: Double? = nil
 }
 struct ProviderQuota: Codable, Identifiable {
     let provider: String
@@ -28,6 +29,7 @@ final class UsageStore: ObservableObject {
     // expensive thing this app does, so the cadence adapts to power and visibility.
     var interval: TimeInterval = 300 { didSet { if interval != oldValue { schedule() } } }
     var paused = false { didSet { if !paused && oldValue { refreshIfStale(60) } } }
+    var onSnapshot: ((UsageSnapshot) -> Void)?
     private var timer: Timer?
     private var lastAttempt: Date?
     init() {
@@ -57,10 +59,9 @@ final class UsageStore: ObservableObject {
                 QuotaWindow(label: "Неделя", remainingPercent: 58, resetsAt: now + 5 * 86400, detail: nil),
             ], source: "ChatGPT Work / Codex", error: nil, plan: "Plus", notes: []),
             ProviderQuota(provider: "cursor", windows: [
-                QuotaWindow(label: "Всего", remainingPercent: 81, resetsAt: now + 19 * 86400, detail: nil),
-                QuotaWindow(label: "Auto", remainingPercent: 84, resetsAt: now + 19 * 86400, detail: nil),
-                QuotaWindow(label: "Модели", remainingPercent: 63, resetsAt: now + 19 * 86400, detail: nil),
-            ], source: "Cursor plan", error: nil, plan: "Pro", notes: ["$7.40 / $20 включено"]),
+                QuotaWindow(label: "Cursor", remainingPercent: 97, resetsAt: now + 19 * 86400, detail: nil, usedPercent: 3),
+                QuotaWindow(label: "Другие", remainingPercent: 0, resetsAt: now + 19 * 86400, detail: nil, usedPercent: 100),
+            ], source: "Cursor plan", error: nil, plan: "Pro", notes: []),
         ])
     }
     func refresh() {
@@ -91,9 +92,13 @@ final class UsageStore: ObservableObject {
             } catch { }
             let value = result
             DispatchQueue.main.async {
-                self?.refreshing = false
-                if let value = value { self?.snapshot = value; self?.error = nil }
-                else { self?.error = "Не удалось обновить лимиты" }
+                guard let self = self else { return }
+                self.refreshing = false
+                if let value = value {
+                    self.snapshot = value
+                    self.error = nil
+                    self.onSnapshot?(value)
+                } else { self.error = "Не удалось обновить лимиты" }
             }
         }
     }

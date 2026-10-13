@@ -18,6 +18,9 @@ jobs:
       - name: Python tests
         run: python3 -m unittest discover -s Tests -v
 
+      - name: Quota alert tests
+        run: swift test
+
       - name: Build app bundle
         run: bash scripts/build.sh
 
