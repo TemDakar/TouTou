@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Merge Toutu observation hooks, preserving unrelated hooks and a backup."""
+"""Merge TouTou observation hooks, preserving unrelated hooks and a backup."""
 import argparse
 import datetime
 import json
@@ -26,10 +26,10 @@ for name, additions in source["hooks"].items():
     hooks[name] = previous + [entry for entry in additions if entry not in previous]
 destination.parent.mkdir(parents=True, exist_ok=True)
 if destination.exists():
-    backup = destination.with_name("hooks.json.toutu-backup-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
+    backup = destination.with_name("hooks.json.TouTou-backup-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f"))
     backup.write_bytes(destination.read_bytes())
     print("Backup:", backup)
-fd, temporary = tempfile.mkstemp(prefix=".toutu-hooks-", dir=destination.parent)
+fd, temporary = tempfile.mkstemp(prefix=".TouTou-hooks-", dir=destination.parent)
 try:
     with os.fdopen(fd, "w") as handle:
         json.dump(existing, handle, ensure_ascii=False, indent=2)

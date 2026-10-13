@@ -11,7 +11,8 @@ import uuid
 
 
 def data_directory():
-    return Path(os.environ.get("TOUTU_DATA_DIR", Path.home() / "Library/Application Support/Toutu/events"))
+    override = os.environ.get("TOUTOU_DATA_DIR") or os.environ.get("TOUTU_DATA_DIR")
+    return Path(override) if override else Path.home() / "Library/Application Support/TouTou/events"
 
 
 def normalize(payload, event):
@@ -77,7 +78,7 @@ def main():
             raise ValueError("Expected JSON object")
         write_event(normalize(payload, args.event))
     except (OSError, ValueError, TypeError, IndexError) as exc:
-        print("Toutu: " + str(exc), file=sys.stderr)
+        print("TouTou: " + str(exc), file=sys.stderr)
     print("{}")
 
 

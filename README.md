@@ -7,19 +7,19 @@
 
 [![macOS 13+](https://img.shields.io/badge/macOS-13%2B-000000?logo=apple&logoColor=white)](#требования)
 [![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)](Package.swift)
-[![SwiftUI + AppKit](https://img.shields.io/badge/UI-SwiftUI%20%2B%20AppKit-0A84FF)](Sources/Toutu)
+[![SwiftUI + AppKit](https://img.shields.io/badge/UI-SwiftUI%20%2B%20AppKit-0A84FF)](Sources/TouTou)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-success)](Package.swift)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/TemDakar/TouTou/actions/workflows/ci.yml/badge.svg)](https://github.com/TemDakar/TouTou/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/TemDakar/TouTou?include_prereleases&label=release)](https://github.com/TemDakar/TouTou/releases)
 
-<img src="docs/screenshots/panel-quotas.png" width="560" alt="Раскрытая панель Toutu: лимиты ChatGPT и Cursor">
+<img src="docs/screenshots/panel-quotas.png" width="560" alt="Раскрытая панель TouTou: лимиты ChatGPT и Cursor">
 
-<sub>Данные на скриншотах демонстрационные (<code>TOUTU_DEMO=1</code>).</sub>
+<sub>Данные на скриншотах демонстрационные (<code>TOUTOU_DEMO=1</code>).</sub>
 
 </div>
 
-> **English:** Toutu is a native macOS notch companion for AI‑agent workflows. It shows real remaining quotas for ChatGPT (Codex) and Cursor, live Cursor agent events via hooks, and can keep your MacBook awake with the lid closed so agents finish their work. No dependencies, no telemetry, no tokens stored. UI is in Russian.
+> **English:** TouTou is a native macOS notch companion for AI‑agent workflows. It shows real remaining quotas for ChatGPT (Codex) and Cursor, live Cursor agent events via hooks, and can keep your MacBook awake with the lid closed so agents finish their work. No dependencies, no telemetry, no tokens stored. UI is in Russian.
 
 ---
 
@@ -64,8 +64,8 @@
 ```bash
 git clone https://github.com/TemDakar/TouTou.git
 cd TouTou
-bash scripts/build.sh          # соберёт dist/Toutu.app
-open dist/Toutu.app            # панель появится у выреза камеры
+bash scripts/build.sh          # соберёт dist/TouTou.app
+open dist/TouTou.app            # панель появится у выреза камеры
 
 # Подключить события Cursor (по желанию)
 python3 scripts/configure_cursor.py
@@ -94,12 +94,12 @@ python3 scripts/install_cursor.py --user
 
 ### Вариант A — готовая сборка
 
-1. Скачайте `Toutu-vX.Y.Z.zip` со страницы [**Releases**](https://github.com/TemDakar/TouTou/releases) и распакуйте.
-2. Перетащите `Toutu.app` в `Программы` (необязательно, можно запускать откуда угодно).
+1. Скачайте `TouTou-vX.Y.Z.zip` со страницы [**Releases**](https://github.com/TemDakar/TouTou/releases) и распакуйте.
+2. Перетащите `TouTou.app` в `Программы` (необязательно, можно запускать откуда угодно).
 3. Первый запуск: сборка подписана ad‑hoc и не нотаризована, поэтому macOS покажет предупреждение. Нажмите правой кнопкой → **Открыть** → **Открыть**, либо снимите карантин:
 
    ```bash
-   xattr -dr com.apple.quarantine /Applications/Toutu.app
+   xattr -dr com.apple.quarantine /Applications/TouTou.app
    ```
 
 ### Вариант B — собрать самостоятельно
@@ -108,20 +108,20 @@ python3 scripts/install_cursor.py --user
 sudo xcodebuild -license accept   # один раз, если Xcode только что установлен
 git clone https://github.com/TemDakar/TouTou.git && cd TouTou
 bash scripts/build.sh
-open dist/Toutu.app
+open dist/TouTou.app
 ```
 
-Скрипт выполняет `swift build -c release`, собирает бандл `dist/Toutu.app`, кладёт `fetch_usage.py` в `Contents/Resources` и подписывает ad‑hoc.
+Скрипт выполняет `swift build -c release`, собирает бандл `dist/TouTou.app`, кладёт `fetch_usage.py` в `Contents/Resources` и подписывает ad‑hoc.
 
 ### Автозапуск при входе
 
-На вкладке «Питание» включите **«Открывать Toutu при включении Mac»**. Если система попросит подтверждение, разрешите Toutu в **Системные настройки → Основные → Объекты входа**. Приложение не показывается в Dock и живёт только в строке меню и у выреза.
+На вкладке «Питание» включите **«Открывать TouTou при включении Mac»**. Если система попросит подтверждение, разрешите TouTou в **Системные настройки → Основные → Объекты входа**. Приложение не показывается в Dock и живёт только в строке меню и у выреза.
 
 ---
 
 ## Подключение Cursor
 
-Toutu узнаёт о событиях агента через официальные [Cursor hooks](https://prod.cursor.com/docs/hooks). Hooks только **наблюдают** — все разрешения и подтверждения остаются в Cursor.
+TouTou узнаёт о событиях агента через официальные [Cursor hooks](https://prod.cursor.com/docs/hooks). Hooks только **наблюдают** — все разрешения и подтверждения остаются в Cursor.
 
 ```bash
 # 1. Сгенерировать конфигурацию с абсолютными путями к Python и адаптеру
@@ -139,7 +139,7 @@ python3 scripts/install_cursor.py --user   # → ~/.cursor/hooks.json
 > [!NOTE]
 > `cursor-hooks.json` содержит абсолютные пути и исключён из репозитория. Если переместили проект или сменили Python — запустите генератор заново и переустановите hooks.
 
-События пишутся в `~/Library/Application Support/Toutu/events`: один JSON на сессию, атомарная запись, автоудаление старше суток. Сохраняются только путь проекта / файла, статус и время — **никаких промптов, ответов, содержимого файлов и вывода команд**. Переменная `TOUTU_DATA_DIR` меняет папку и для приложения, и для адаптера.
+События пишутся в `~/Library/Application Support/TouTou/events`: один JSON на сессию, атомарная запись, автоудаление старше суток. Сохраняются только путь проекта / файла, статус и время — **никаких промптов, ответов, содержимого файлов и вывода команд**. Переменная `TOUTOU_DATA_DIR` меняет папку и для приложения, и для адаптера.
 
 ---
 
@@ -147,7 +147,7 @@ python3 scripts/install_cursor.py --user   # → ~/.cursor/hooks.json
 
 Обновляются каждые 5 минут (10 — от батареи), при раскрытии панели, если данным больше 90 секунд, и по кнопке ↻. Пока спит экран, таймер стоит; скрытая значком 🍃 панель проверку не останавливает. Полоса показывает **остаток**; наведение — использовано/осталось с десятыми и точную дату сброса.
 
-Когда остаток окна опускается до 25 % и затем до 10 %, Toutu показывает уведомление macOS с названием сервиса и окна («ChatGPT · 5 часов: осталось 8 %»). То же окно не повторяется, пока остаток снова не станет выше 25 % или не начнётся новый период сброса. Колокольчик внизу панели выключает предупреждения. При первом запуске система один раз спрашивает разрешение; баннер локальный, пушей нет. Демо-режим (`TOUTU_DEMO`) уведомления не шлёт.
+Когда остаток окна опускается до 25 % и затем до 10 %, TouTou показывает уведомление macOS с названием сервиса и окна («ChatGPT · 5 часов: осталось 8 %»). То же окно не повторяется, пока остаток снова не станет выше 25 % или не начнётся новый период сброса. Колокольчик внизу панели выключает предупреждения. При первом запуске система один раз спрашивает разрешение; баннер локальный, пушей нет. Демо-режим (`TOUTOU_DEMO`) уведомления не шлёт.
 
 ### Cursor
 
@@ -176,7 +176,7 @@ python3 scripts/install_cursor.py --user   # → ~/.cursor/hooks.json
 - Выполняет `pmset -a disablesleep 1` (и `0` при выключении). Это единственный способ в macOS работать с закрытой крышкой без внешнего монитора, он требует прав администратора, поэтому система показывает стандартный диалог с паролем при каждом переключении.
 - Показывает фактическое состояние из `pmset -g`, источник питания и заряд (через IOKit, без опроса).
 - При работе от батареи предупреждает оранжевым.
-- Флажок **«Вернуть обычный сон при выходе из Toutu»** (по умолчанию включён) возвращает настройку при закрытии приложения.
+- Флажок **«Вернуть обычный сон при выходе из TouTou»** (по умолчанию включён) возвращает настройку при закрытии приложения.
 - Пока режим активен, в компактной полосе горит значок луны.
 
 > [!WARNING]
@@ -221,7 +221,7 @@ python3 scripts/install_cursor.py --user   # → ~/.cursor/hooks.json
 | Агент работает | 1–2 % | ~75 | 19–20 МБ |
 | <sub>до оптимизации (любое состояние)</sub> | <sub>7–8 %</sub> | <sub>~300</sub> | <sub>45 МБ</sub> |
 
-<sub>MacBook с Apple Silicon, release‑сборка, `top -pid $(pgrep -x Toutu)`.</sub>
+<sub>MacBook с Apple Silicon, release‑сборка, `top -pid $(pgrep -x TouTou)`.</sub>
 
 Как это достигается:
 
@@ -246,7 +246,7 @@ python3 scripts/install_cursor.py --user   # → ~/.cursor/hooks.json
 <details>
 <summary><b>«Нет данных» у ChatGPT</b></summary>
 
-- Нужно desktop‑приложение ChatGPT с Codex и вход в аккаунт. Toutu ищет `codex` в `PATH` или по пути `/Applications/ChatGPT.app/Contents/Resources/codex-cli/.../codex`.
+- Нужно desktop‑приложение ChatGPT с Codex и вход в аккаунт. TouTou ищет `codex` в `PATH` или по пути `/Applications/ChatGPT.app/Contents/Resources/codex-cli/.../codex`.
 - Выполните в терминале `codex app-server` — если команда не найдена, Codex не установлен.
 </details>
 
@@ -255,24 +255,24 @@ python3 scripts/install_cursor.py --user   # → ~/.cursor/hooks.json
 
 - Проверьте `~/.cursor/hooks.json` — там должны быть команды с `cursor_hook.py`.
 - Начните **новую** Agent‑сессию: hooks подхватываются при старте сессии.
-- Посмотрите папку `~/Library/Application Support/Toutu/events` — при работе агента там появляются JSON‑файлы.
+- Посмотрите папку `~/Library/Application Support/TouTou/events` — при работе агента там появляются JSON‑файлы.
 - Если переносили проект — перегенерируйте `cursor-hooks.json` и переустановите.
 </details>
 
 <details>
 <summary><b>Панель стоит не в вырезе / на внешнем мониторе</b></summary>
 
-Toutu выбирает первый экран с вырезом, иначе — главный. Запустите `./.build/release/Toutu --screen-info`, чтобы увидеть, что сообщает система о ваших экранах, и приложите вывод к issue.
+TouTou выбирает первый экран с вырезом, иначе — главный. Запустите `./.build/release/TouTou --screen-info`, чтобы увидеть, что сообщает система о ваших экранах, и приложите вывод к issue.
 </details>
 
 <details>
 <summary><b>macOS не даёт открыть приложение</b></summary>
 
-Сборка не нотаризована. Правая кнопка → **Открыть**, или `xattr -dr com.apple.quarantine /путь/к/Toutu.app`. Либо соберите сами — `bash scripts/build.sh`.
+Сборка не нотаризована. Правая кнопка → **Открыть**, или `xattr -dr com.apple.quarantine /путь/к/TouTou.app`. Либо соберите сами — `bash scripts/build.sh`.
 </details>
 
 <details>
-<summary><b>Mac не засыпает после удаления Toutu</b></summary>
+<summary><b>Mac не засыпает после удаления TouTou</b></summary>
 
 Режим «Не спать» — системная настройка. Выполните `sudo pmset -a disablesleep 0`.
 </details>
@@ -283,26 +283,26 @@ Toutu выбирает первый экран с вырезом, иначе —
 
 ```bash
 swift run                                   # запуск из исходников
-swift build -c release                      # release‑бинарник в .build/release/Toutu
+swift build -c release                      # release‑бинарник в .build/release/TouTou
 python3 -m unittest discover -s Tests -v    # тесты Python‑модулей
 swift test                                  # пороги уведомлений о лимите
 
 # Рендер раскрытой панели в PNG (обе вкладки) — удобно для проверки вёрстки и PR
-TOUTU_DEMO=1 .build/release/Toutu --snapshot /tmp/panel   # демо‑данные
-.build/release/Toutu --snapshot /tmp/panel                # ваши реальные данные
+TOUTOU_DEMO=1 .build/release/TouTou --snapshot /tmp/panel   # демо‑данные
+.build/release/TouTou --snapshot /tmp/panel                # ваши реальные данные
 
-.build/release/Toutu --screen-info          # параметры экранов и выреза
+.build/release/TouTou --screen-info          # параметры экранов и выреза
 ```
 
 | Переменная | Назначение |
 |---|---|
-| `TOUTU_DEMO=1` | Фиксированные демо‑лимиты и демо‑события; аккаунты не трогаются |
-| `TOUTU_DATA_DIR` | Другая папка событий для приложения и адаптера hooks |
+| `TOUTOU_DEMO=1` | Фиксированные демо‑лимиты и демо‑события; аккаунты не трогаются |
+| `TOUTOU_DATA_DIR` | Другая папка событий для приложения и адаптера hooks |
 
 ```
 Sources/QuotaAlerts/
   QuotaAlerts.swift   когда слать уведомление о низком остатке
-Sources/Toutu/
+Sources/TouTou/
   main.swift      панель, персонаж, вкладки, AppDelegate
   Usage.swift     модель лимитов, запуск fetch_usage.py, демо‑данные
   Alerts.swift    баннер macOS и колокольчик в панели
@@ -317,7 +317,7 @@ Tests/                  unittest
 docs/screenshots/       PNG для README
 ```
 
-CI на GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) собирает приложение, гоняет тесты и прикладывает `Toutu.app` и скриншоты к каждому запуску.
+CI на GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) собирает приложение, гоняет тесты и прикладывает `TouTou.app` и скриншоты к каждому запуску.
 
 ### Выпуск релиза
 
@@ -330,7 +330,7 @@ git tag v0.3.0
 git push origin v0.3.0
 ```
 
-Через несколько минут на странице **Releases** появится `Toutu-v0.3.0.zip`, его SHA‑256 и заметки, взятые из соответствующего раздела `CHANGELOG.md`. Workflow откажется собирать релиз, если версия в теге не совпадает с `CFBundleShortVersionString` в `Info.plist`.
+Через несколько минут на странице **Releases** появится `TouTou-v0.3.0.zip`, его SHA‑256 и заметки, взятые из соответствующего раздела `CHANGELOG.md`. Workflow откажется собирать релиз, если версия в теге не совпадает с `CFBundleShortVersionString` в `Info.plist`.
 
 ---
 
@@ -354,7 +354,7 @@ Pull request'ы приветствуются — см. [CONTRIBUTING.md](CONTRIB
 
 ### Благодарности
 
-- Идея компаньона в вырезе — [CouCou](https://github.com/Louis-CFM/coucou). Код, персонаж и звуки не копировались; Toutu — самостоятельная реализация.
+- Идея компаньона в вырезе — [CouCou](https://github.com/Louis-CFM/coucou). Код, персонаж и звуки не копировались; TouTou — самостоятельная реализация.
 - [Cursor hooks](https://prod.cursor.com/docs/hooks), [ChatGPT app‑server](https://learn.chatgpt.com/docs/app-server).
 - Справка по API дашборда Cursor — [CodexBar](https://github.com/steipete/CodexBar/blob/main/docs/cursor.md).
 

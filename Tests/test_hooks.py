@@ -29,14 +29,14 @@ class HookTests(unittest.TestCase):
 
     def test_malformed_input_does_not_break_cursor(self):
         with tempfile.TemporaryDirectory() as directory:
-            result = subprocess.run([sys.executable, str(SCRIPT), "stop"], input="not json", text=True, capture_output=True, env={**os.environ, "TOUTU_DATA_DIR": directory})
+            result = subprocess.run([sys.executable, str(SCRIPT), "stop"], input="not json", text=True, capture_output=True, env={**os.environ, "TOUTOU_DATA_DIR": directory})
             self.assertEqual(result.returncode, 0)
             self.assertEqual(json.loads(result.stdout), {})
             self.assertEqual(list(Path(directory).glob("*.json")), [])
 
     def test_real_cli_event_roundtrip(self):
         with tempfile.TemporaryDirectory() as directory:
-            result = subprocess.run([sys.executable, str(SCRIPT), "afterFileEdit"], input=json.dumps({"conversation_id": "one", "file_path": "src/app.ts", "workspace_roots": ["/project"]}), text=True, capture_output=True, env={**os.environ, "TOUTU_DATA_DIR": directory})
+            result = subprocess.run([sys.executable, str(SCRIPT), "afterFileEdit"], input=json.dumps({"conversation_id": "one", "file_path": "src/app.ts", "workspace_roots": ["/project"]}), text=True, capture_output=True, env={**os.environ, "TOUTOU_DATA_DIR": directory})
             self.assertEqual(result.returncode, 0)
             event = json.loads(next(Path(directory).glob("*.json")).read_text())
             self.assertEqual(event["session"], "one")

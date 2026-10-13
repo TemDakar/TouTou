@@ -105,7 +105,7 @@ def chatgpt_usage():
                 raise ValueError("Response too large")
         raise TimeoutError("Provider timeout")
     try:
-        send({"id": 1, "method": "initialize", "params": {"clientInfo": {"name": "toutu", "title": "Toutu", "version": "0.2.0"}}})
+        send({"id": 1, "method": "initialize", "params": {"clientInfo": {"name": "TouTou", "title": "TouTou", "version": "0.4.0"}}})
         response(1)
         send({"method": "initialized", "params": {}})
         send({"id": 2, "method": "account/rateLimits/read"})
@@ -196,7 +196,7 @@ def cursor_usage():
         raise ValueError("Cursor login expired")
     request = urllib.request.Request("https://cursor.com/api/usage-summary", headers={
         "Cookie": "WorkosCursorSessionToken=" + subject + "%3A%3A" + token,
-        "Accept": "application/json", "User-Agent": "Toutu/0.2.0",
+        "Accept": "application/json", "User-Agent": "TouTou/0.4.0",
     })
     # Never forward an authenticated request to a redirect destination.
     with urllib.request.build_opener(NoRedirect).open(request, timeout=15) as response:

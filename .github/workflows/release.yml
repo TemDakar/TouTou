@@ -1,6 +1,6 @@
 name: Release
 
-# Publishes a GitHub Release with Toutu.app.zip whenever a version tag is pushed:
+# Publishes a GitHub Release with TouTou.app.zip whenever a version tag is pushed:
 #   git tag v0.3.0 && git push origin v0.3.0
 on:
   push:
@@ -39,9 +39,9 @@ jobs:
       - name: Package
         run: |
           cd dist
-          mv Toutu.app.zip "Toutu-${GITHUB_REF_NAME}.zip"
-          shasum -a 256 "Toutu-${GITHUB_REF_NAME}.zip" > "Toutu-${GITHUB_REF_NAME}.zip.sha256"
-          cat "Toutu-${GITHUB_REF_NAME}.zip.sha256"
+          mv TouTou.app.zip "TouTou-${GITHUB_REF_NAME}.zip"
+          shasum -a 256 "TouTou-${GITHUB_REF_NAME}.zip" > "TouTou-${GITHUB_REF_NAME}.zip.sha256"
+          cat "TouTou-${GITHUB_REF_NAME}.zip.sha256"
 
       - name: Release notes from CHANGELOG
         run: |
@@ -53,14 +53,14 @@ jobs:
             on { print }
           ' CHANGELOG.md > notes.md
           if [ ! -s notes.md ]; then echo "Изменения см. в CHANGELOG.md." > notes.md; fi
-          printf '\n---\n\n**Установка:** распакуйте архив, перетащите `Toutu.app` в Программы. Сборка подписана ad-hoc: при первом запуске нажмите правой кнопкой → Открыть, либо выполните `xattr -dr com.apple.quarantine /Applications/Toutu.app`.\n' >> notes.md
+          printf '\n---\n\n**Установка:** распакуйте архив, перетащите `TouTou.app` в Программы. Сборка подписана ad-hoc: при первом запуске нажмите правой кнопкой → Открыть, либо выполните `xattr -dr com.apple.quarantine /Applications/TouTou.app`.\n' >> notes.md
           cat notes.md
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Toutu ${{ github.ref_name }}
+          name: TouTou ${{ github.ref_name }}
           body_path: notes.md
           files: |
-            dist/Toutu-${{ github.ref_name }}.zip
-            dist/Toutu-${{ github.ref_name }}.zip.sha256
+            dist/TouTou-${{ github.ref_name }}.zip
+            dist/TouTou-${{ github.ref_name }}.zip.sha256

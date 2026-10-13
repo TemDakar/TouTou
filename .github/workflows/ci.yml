@@ -27,13 +27,13 @@ jobs:
       - name: Render panel screenshots (demo data)
         run: |
           mkdir -p artifacts
-          TOUTU_DEMO=1 .build/release/Toutu --snapshot artifacts/panel
+          TOUTOU_DEMO=1 .build/release/TouTou --snapshot artifacts/panel
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Toutu-${{ github.sha }}
+          name: TouTou-${{ github.sha }}
           path: |
-            dist/Toutu.app
+            dist/TouTou.app
             artifacts/*.png
           if-no-files-found: error

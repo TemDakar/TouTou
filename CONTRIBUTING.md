@@ -19,21 +19,21 @@ python3 -m unittest discover -s Tests -v
 
 1. `swift build -c release` собирается без предупреждений.
 2. `python3 -m unittest discover -s Tests -v` проходит; новые ветки логики в `scripts/*.py` покрыты тестами.
-3. Вёрстка проверена через `TOUTU_DEMO=1 .build/release/Toutu --snapshot /tmp/panel` — приложите PNG к PR, если меняли интерфейс.
+3. Вёрстка проверена через `TOUTOU_DEMO=1 .build/release/TouTou --snapshot /tmp/panel` — приложите PNG к PR, если меняли интерфейс.
 4. Если изменение касается данных аккаунтов или сети — обновите `SECURITY.md`.
 5. Одна тема — один PR. Описание: что меняется, зачем, как проверяли.
 
 ## Принципы
 
 - **Приватность по умолчанию.** Никаких новых сетевых запросов, логов с токенами, телеметрии. Ошибки показываются пользователю без содержимого исключений.
-- **Экономия ресурсов.** Приложение живёт в строке меню круглосуточно и часто от батареи. Любой таймер должен иметь `tolerance`, любая анимация — причину быть включённой. Проверяйте `top -pid $(pgrep -x Toutu)` до и после.
+- **Экономия ресурсов.** Приложение живёт в строке меню круглосуточно и часто от батареи. Любой таймер должен иметь `tolerance`, любая анимация — причину быть включённой. Проверяйте `top -pid $(pgrep -x TouTou)` до и после.
 - **Без зависимостей.** Только SwiftUI, AppKit, Foundation, IOKit и стандартная библиотека Python.
 - **Наблюдение, а не управление.** Hooks Cursor только читают события; разрешения и подтверждения остаются в Cursor.
 
 ## Структура
 
 ```
-Sources/Toutu/
+Sources/TouTou/
   main.swift      панель, персонаж, AppDelegate, вкладки
   Usage.swift     модель лимитов и запуск fetch_usage.py
   Power.swift     режим «не спать при закрытой крышке», IOKit
@@ -42,11 +42,11 @@ scripts/
   cursor_hook.py        адаптер Cursor hooks → JSON-события
   configure_cursor.py   генерация cursor-hooks.json с абсолютными путями
   install_cursor.py     слияние hooks в ~/.cursor/hooks.json с бэкапом
-  build.sh              release-сборка и упаковка Toutu.app
+  build.sh              release-сборка и упаковка TouTou.app
 Tests/                  unittest для Python-модулей
 docs/screenshots/       PNG для README (демо-данные)
 ```
 
 ## Сообщения об ошибках
 
-Укажите версию macOS, модель Mac (есть ли вырез камеры), версию Toutu, какие из Cursor / ChatGPT установлены и вывод `python3 scripts/fetch_usage.py` (в нём нет токенов — только проценты и даты).
+Укажите версию macOS, модель Mac (есть ли вырез камеры), версию TouTou, какие из Cursor / ChatGPT установлены и вывод `python3 scripts/fetch_usage.py` (в нём нет токенов — только проценты и даты).

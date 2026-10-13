@@ -2,12 +2,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 swift build -c release
-mkdir -p dist/Toutu.app/Contents/MacOS
-mkdir -p dist/Toutu.app/Contents/Resources
-cp scripts/fetch_usage.py dist/Toutu.app/Contents/Resources/fetch_usage.py
-cp .build/release/Toutu dist/Toutu.app/Contents/MacOS/Toutu
-cp scripts/Info.plist dist/Toutu.app/Contents/Info.plist
-codesign --force --sign - dist/Toutu.app
-rm -f dist/Toutu.app.zip
-ditto -c -k --keepParent dist/Toutu.app dist/Toutu.app.zip
-printf 'Готово: %s/dist/Toutu.app (архив для Releases: dist/Toutu.app.zip)\n' "$PWD"
+mkdir -p dist/TouTou.app/Contents/MacOS
+mkdir -p dist/TouTou.app/Contents/Resources
+cp scripts/fetch_usage.py dist/TouTou.app/Contents/Resources/fetch_usage.py
+cp .build/release/TouTou dist/TouTou.app/Contents/MacOS/TouTou
+cp scripts/Info.plist dist/TouTou.app/Contents/Info.plist
+codesign --force --sign - dist/TouTou.app
+rm -f dist/TouTou.app.zip
+ditto -c -k --keepParent dist/TouTou.app dist/TouTou.app.zip
+printf 'Готово: %s/dist/TouTou.app (архив для Releases: dist/TouTou.app.zip)\n' "$PWD"

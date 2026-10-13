@@ -109,9 +109,9 @@ final class PowerStore: ObservableObject {
         do {
             if on { try SMAppService.mainApp.register() }
             else { try SMAppService.mainApp.unregister() }
-            message = on ? "Toutu откроется при включении" : "Автозапуск выключен"
+            message = on ? "TouTou откроется при включении" : "Автозапуск выключен"
         } catch {
-            message = Bundle.main.bundlePath.hasSuffix(".app") ? "Не удалось изменить автозапуск" : "Соберите Toutu.app — автозапуск работает из приложения"
+            message = Bundle.main.bundlePath.hasSuffix(".app") ? "Не удалось изменить автозапуск" : "Соберите TouTou.app — автозапуск работает из приложения"
         }
         refreshLaunchAtLogin()
         if launchNeedsApproval { message = "Разрешите в Настройках → Объекты входа" }

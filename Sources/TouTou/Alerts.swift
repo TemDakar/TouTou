@@ -31,7 +31,7 @@ final class QuotaAlertCenter: NSObject, ObservableObject, UNUserNotificationCent
     }
 
     func consider(_ snapshot: UsageSnapshot) {
-        guard enabled, ProcessInfo.processInfo.environment["TOUTU_DEMO"] == nil,
+        guard enabled, ProcessInfo.processInfo.environment["TOUTOU_DEMO"] == nil, ProcessInfo.processInfo.environment["TOUTU_DEMO"] == nil,
               !CommandLine.arguments.contains("--snapshot") else { return }
         let windows = snapshot.providers.flatMap { provider in
             provider.windows.map { window in

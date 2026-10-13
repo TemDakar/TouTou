@@ -23,44 +23,60 @@ final class SessionStore: ObservableObject {
     @Published var muted = false
     @Published var tab: PanelTab = .quotas
     let directory: URL
+    /// Events written before the app was renamed TouTou.
+    private let legacyDirectory: URL?
     private var timer: Timer?
-    private var watcher: DispatchSourceFileSystemObject?
+    private var watchers: [DispatchSourceFileSystemObject] = []
     private var pending: DispatchWorkItem?
     init() {
-        let env = ProcessInfo.processInfo.environment["TOUTU_DATA_DIR"]
-        directory = env.map { URL(fileURLWithPath: $0) } ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Toutu/events")
+        let env = ProcessInfo.processInfo.environment["TOUTOU_DATA_DIR"] ?? ProcessInfo.processInfo.environment["TOUTU_DATA_DIR"]
+        directory = env.map { URL(fileURLWithPath: $0) } ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/TouTou/events")
+        let legacy = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Toutu/events")
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         } catch { self.error = error.localizedDescription }
+        // On a case-insensitive disk the old and new names are the same folder.
+        legacyDirectory = env == nil && !Self.sameFolder(directory, legacy) ? legacy : nil
         poll()
         watch()
         // The directory watcher delivers new events instantly; this slow timer only
         // expires stale entries and covers the rare case where the watcher is unavailable.
-        let timer = Timer(timeInterval: watcher == nil ? 5 : 60, repeats: true) { [weak self] _ in self?.poll() }
-        timer.tolerance = watcher == nil ? 1 : 15
+        let timer = Timer(timeInterval: watchers.isEmpty ? 5 : 60, repeats: true) { [weak self] _ in self?.poll() }
+        timer.tolerance = watchers.isEmpty ? 1 : 15
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
     }
-    private func watch() {
-        let descriptor = open(directory.path, O_EVTONLY)
-        guard descriptor >= 0 else { return }
-        let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: [.write, .rename, .delete], queue: .main)
-        source.setEventHandler { [weak self] in
-            guard let self = self else { return }
-            // Hooks write several files in quick succession; coalesce into one read.
-            self.pending?.cancel()
-            let work = DispatchWorkItem { self.poll() }
-            self.pending = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
+    private static func sameFolder(_ left: URL, _ right: URL) -> Bool {
+        func fileNumber(_ url: URL) -> NSNumber? {
+            (try? FileManager.default.attributesOfItem(atPath: url.path)[.systemFileNumber]) as? NSNumber
         }
-        source.setCancelHandler { close(descriptor) }
-        source.resume()
-        watcher = source
+        guard let leftNumber = fileNumber(left), let rightNumber = fileNumber(right) else { return false }
+        return leftNumber == rightNumber
+    }
+    private func watch() {
+        for folder in [directory, legacyDirectory].compactMap({ $0 }) {
+            let descriptor = open(folder.path, O_EVTONLY)
+            guard descriptor >= 0 else { continue }
+            let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: [.write, .rename, .delete], queue: .main)
+            source.setEventHandler { [weak self] in
+                guard let self = self else { return }
+                // Hooks write several files in quick succession; coalesce into one read.
+                self.pending?.cancel()
+                let work = DispatchWorkItem { self.poll() }
+                self.pending = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
+            }
+            source.setCancelHandler { close(descriptor) }
+            source.resume()
+            watchers.append(source)
+        }
     }
     func poll() {
         guard !demo else { return }
         do {
-            let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil).filter { $0.pathExtension == "json" }
+            let primary = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            let older = legacyDirectory.flatMap { try? FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil) } ?? []
+            let files = (primary + older).filter { $0.pathExtension == "json" }
             let events = files.compactMap { url -> AgentEvent? in
                 guard let data = try? Data(contentsOf: url), data.count <= 262144 else { return nil }
                 return try? JSONDecoder().decode(AgentEvent.self, from: data)
@@ -76,7 +92,7 @@ final class SessionStore: ObservableObject {
     func toggleDemo() {
         demo.toggle()
         if demo {
-            sessions = [AgentEvent(id: "demo-1", session: "demo-1", agent: "Cursor", project: "toutu / landing", state: "working", detail: "Обновляет компоненты интерфейса", timestamp: Date().timeIntervalSince1970), AgentEvent(id: "demo-2", session: "demo-2", agent: "Cursor", project: "api / server", state: "done", detail: "Задача завершена", timestamp: Date().timeIntervalSince1970)]
+            sessions = [AgentEvent(id: "demo-1", session: "demo-1", agent: "Cursor", project: "TouTou / landing", state: "working", detail: "Обновляет компоненты интерфейса", timestamp: Date().timeIntervalSince1970), AgentEvent(id: "demo-2", session: "demo-2", agent: "Cursor", project: "api / server", state: "done", detail: "Задача завершена", timestamp: Date().timeIntervalSince1970)]
         } else { sessions = []; poll() }
     }
     func openApp(_ name: String, fallback: String) {
@@ -207,7 +223,7 @@ struct IslandView: View {
                         Text(footerText).lineLimit(1).font(.system(size: 9)).foregroundStyle(.secondary)
                         Spacer(minLength: 2)
                         Button { alerts.setEnabled(!alerts.enabled) } label: { Image(systemName: alerts.enabled ? "bell" : "bell.slash") }
-                            .help(alerts.permissionDenied ? "Разрешите уведомления Toutu в Системных настройках" : "Предупреждать, когда остаток лимита опускается ниже 25%, и ещё раз ниже 10%")
+                            .help(alerts.permissionDenied ? "Разрешите уведомления TouTou в Системных настройках" : "Предупреждать, когда остаток лимита опускается ниже 25%, и ещё раз ниже 10%")
                         Button { store.muted.toggle() } label: { Image(systemName: store.muted ? "speaker.slash" : "speaker.wave.2") }.help("Звук завершения")
                         Button { NSApplication.shared.terminate(nil) } label: { Image(systemName: "power") }.help("Выйти")
                     }.font(.system(size: 10)).buttonStyle(.plain).foregroundStyle(.secondary)
@@ -308,12 +324,12 @@ struct IslandView: View {
                 }
             }
             Toggle(isOn: Binding(get: { power.launchAtLogin }, set: { power.setLaunchAtLogin($0) })) {
-                Text(power.launchNeedsApproval ? "Автозапуск: разрешите в Объектах входа" : "Открывать Toutu при включении Mac")
+                Text(power.launchNeedsApproval ? "Автозапуск: разрешите в Объектах входа" : "Открывать TouTou при включении Mac")
                     .font(.system(size: 9))
             }.toggleStyle(.checkbox).controlSize(.mini)
-            .help("Добавляет Toutu в объекты входа, чтобы панель появлялась после включения или входа в систему")
+            .help("Добавляет TouTou в объекты входа, чтобы панель появлялась после включения или входа в систему")
             Toggle(isOn: $power.restoreOnQuit) {
-                Text("Вернуть обычный сон при выходе из Toutu").font(.system(size: 9))
+                Text("Вернуть обычный сон при выходе из TouTou").font(.system(size: 9))
             }.toggleStyle(.checkbox).controlSize(.mini)
         }.padding(9).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 12))
@@ -464,7 +480,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.orderFrontRegardless()
         alerts.start()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "leaf.fill", accessibilityDescription: "Toutu")
+        statusItem.button?.image = NSImage(systemSymbolName: "leaf.fill", accessibilityDescription: "TouTou")
         statusItem.button?.target = self
         statusItem.button?.action = #selector(toggle)
     }
@@ -495,8 +511,8 @@ if let index = CommandLine.arguments.firstIndex(of: "--snapshot"), CommandLine.a
     let store = SessionStore(), usage = UsageStore(), power = PowerStore()
     store.expanded = true
     store.expansionProgress = 1
-    if ProcessInfo.processInfo.environment["TOUTU_DEMO"] != nil { store.toggleDemo() }
-    RunLoop.main.run(until: Date().addingTimeInterval(ProcessInfo.processInfo.environment["TOUTU_DEMO"] != nil ? 1 : 8))
+    if ProcessInfo.processInfo.environment["TOUTOU_DEMO"] != nil || ProcessInfo.processInfo.environment["TOUTU_DEMO"] != nil { store.toggleDemo() }
+    RunLoop.main.run(until: Date().addingTimeInterval(ProcessInfo.processInfo.environment["TOUTOU_DEMO"] != nil || ProcessInfo.processInfo.environment["TOUTU_DEMO"] != nil ? 1 : 8))
     for tab in PanelTab.allCases {
         store.tab = tab
         let host = NSHostingView(rootView: IslandView(store: store, usage: usage, power: power, alerts: QuotaAlertCenter()))

@@ -66,7 +66,7 @@ final class UsageStore: ObservableObject {
     }
     func refresh() {
         guard !refreshing else { return }
-        if ProcessInfo.processInfo.environment["TOUTU_DEMO"] != nil { snapshot = Self.demo; return }
+        if ProcessInfo.processInfo.environment["TOUTOU_DEMO"] != nil || ProcessInfo.processInfo.environment["TOUTU_DEMO"] != nil { snapshot = Self.demo; return }
         refreshing = true
         lastAttempt = Date()
         DispatchQueue.global(qos: .utility).async { [weak self] in
